@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/services/network_service.dart';
 import '../../core/services/transaction_service.dart';
+import '../../core/services/sync_service.dart';
 import 'offline_transfer_screen.dart';
 
 class WalletDashboard extends StatefulWidget {
@@ -157,20 +158,31 @@ class _WalletDashboardState extends State<WalletDashboard> with SingleTickerProv
                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
                                     const Text('Mesh Network Status', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 16)),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: Colors.greenAccent.withValues(alpha: 0.2),
-                                        borderRadius: BorderRadius.circular(20),
-                                        border: Border.all(color: Colors.greenAccent.withValues(alpha: 0.5)),
-                                      ),
-                                      child: const Row(
-                                        children: [
-                                          Icon(Icons.wifi_tethering, color: Colors.greenAccent, size: 14),
-                                          SizedBox(width: 6),
-                                          Text('ACTIVE', style: TextStyle(color: Colors.greenAccent, fontSize: 12, fontWeight: FontWeight.bold)),
-                                        ],
-                                      ),
+                                    Consumer<SyncService>(
+                                      builder: (context, syncService, _) {
+                                        return StreamBuilder<bool>(
+                                          stream: syncService.connectionStatus,
+                                          initialData: syncService.isOnline,
+                                          builder: (context, snapshot) {
+                                            final isOnline = snapshot.data ?? false;
+                                            return Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                              decoration: BoxDecoration(
+                                                color: (isOnline ? Colors.greenAccent : Colors.orangeAccent).withValues(alpha: 0.2),
+                                                borderRadius: BorderRadius.circular(20),
+                                                border: Border.all(color: (isOnline ? Colors.greenAccent : Colors.orangeAccent).withValues(alpha: 0.5)),
+                                              ),
+                                              child: Row(
+                                                children: [
+                                                  Icon(isOnline ? Icons.wifi : Icons.wifi_off, color: isOnline ? Colors.greenAccent : Colors.orangeAccent, size: 14),
+                                                  const SizedBox(width: 6),
+                                                  Text(isOnline ? 'ONLINE' : 'OFFLINE', style: TextStyle(color: isOnline ? Colors.greenAccent : Colors.orangeAccent, fontSize: 12, fontWeight: FontWeight.bold)),
+                                                ],
+                                              ),
+                                            );
+                                          }
+                                        );
+                                      },
                                     )
                                   ],
                                 ),

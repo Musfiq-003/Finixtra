@@ -11,6 +11,11 @@ class SyncService {
   late StreamSubscription<ConnectivityResult> _connectivitySubscription;
   final String _apiGatewayUrl = "http://10.0.2.2:3000/api/v1/wallet/sync-offline"; // Android emulator localhost alias
   Database? _db;
+  
+  final _connectivityController = StreamController<bool>.broadcast();
+  Stream<bool> get connectionStatus => _connectivityController.stream;
+  bool _isOnline = false;
+  bool get isOnline => _isOnline;
 
   Future<void> init() async {
     final dbPath = await getDatabasesPath();
@@ -18,7 +23,13 @@ class SyncService {
     _db = await openDatabase(path);
 
     _connectivitySubscription = Connectivity().onConnectivityChanged.listen((ConnectivityResult result) {
-      if (result == ConnectivityResult.wifi || result == ConnectivityResult.mobile) {
+      final online = result == ConnectivityResult.wifi || result == ConnectivityResult.mobile;
+      if (online != _isOnline) {
+        _isOnline = online;
+        _connectivityController.add(_isOnline);
+      }
+      
+      if (online) {
         // We have internet! Time to act as the Mesh Uplink.
         _flushOfflineQueue();
       }
@@ -65,5 +76,6 @@ class SyncService {
 
   void dispose() {
     _connectivitySubscription.cancel();
+    _connectivityController.close();
   }
 }
