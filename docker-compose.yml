@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: finixtra
+      POSTGRES_PASSWORD: enterprise_password
+      POSTGRES_DB: finixtra_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U finixtra -d finixtra_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  api-gateway:
+    build: ./api-gateway
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - REDIS_URL=redis://redis:6379
+      - DB_HOST=postgres
+      - DB_USER=finixtra
+      - DB_PASSWORD=enterprise_password
+      - DB_NAME=finixtra_db
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      auth-service:
+        condition: service_started
+
+  wallet-service:
+    build: ./wallet-service
+    ports:
+      - "4000:4000"
+    environment:
+      - DATABASE_URL=postgres://finixtra:enterprise_password@postgres:5432/finixtra_db
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  ai-fraud-engine:
+    build: ./ai-fraud-engine
+    ports:
+      - "8000:8000"
+
+  auth-service:
+    build: ./auth-service
+    ports:
+      - "3001:3001"
+    environment:
+      - DATABASE_URL=postgres://finixtra:enterprise_password@postgres:5432/finixtra_db
+      - JWT_SECRET=enterprise_secret_key_finixtra
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:
